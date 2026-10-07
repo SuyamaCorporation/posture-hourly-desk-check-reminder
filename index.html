@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Posture Hourly Desk Check & Correction Reminder</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @keyframes pulse-ring {
+      0% { transform: scale(1); opacity: 1; }
+      100% { transform: scale(1.4); opacity: 0; }
+    }
+    .pulse-ring { animation: pulse-ring 1s ease-out infinite; }
+  </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-green-50 to-teal-100 font-sans">
+
+<div class="max-w-3xl mx-auto px-4 py-8">
+  <header class="mb-8 text-center">
+    <h1 class="text-3xl font-bold text-teal-800">🧘 Posture Desk Check Reminder</h1>
+    <p class="text-teal-600 mt-1">Protect your neck, back, and shoulders with hourly check-ins.</p>
+  </header>
+
+  <!-- Settings -->
+  <section class="bg-white rounded-2xl shadow-md p-6 mb-6" aria-label="Timer Settings">
+    <h2 class="text-lg font-semibold text-teal-700 mb-4">Settings</h2>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div>
+        <label for="workStart" class="block text-sm font-medium text-gray-700 mb-1">Desk Work Start</label>
+        <input type="time" id="workStart" value="09:00"
+          class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400" />
+      </div>
+      <div>
+        <label for="workEnd" class="block text-sm font-medium text-gray-700 mb-1">Desk Work End</label>
+        <input type="time" id="workEnd" value="18:00"
+          class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400" />
+      </div>
+      <div>
+        <label for="intervalMin" class="block text-sm font-medium text-gray-700 mb-1">Check Interval (minutes)</label>
+        <select id="intervalMin"
+          class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400">
+          <option value="20">20 min</option>
+          <option value="30">30 min</option>
+          <option value="45">45 min</option>
+          <option value="60" selected>60 min</option>
+          <option value="90">90 min</option>
+        </select>
+      </div>
+      <div class="flex items-end">
+        <button id="toggleTimer"
+          class="w-full bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-lg px-4 py-2 transition"
+          aria-label="Start or stop the posture reminder timer">
+          ▶ Start Timer
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Timer Display -->
+  <section class="bg-white rounded-2xl shadow-md p-6 mb-6 text-center" aria-label="Timer countdown">
+    <p class="text-sm text-gray-500 mb-1">Next check in</p>
+    <div class="relative inline-flex items-center justify-center">
+      <div id="pulseRing" class="hidden pulse-ring absolute w-28 h-28 rounded-full bg-teal-200 opacity-60"></div>
+      <div id="timerDisplay"
+        class="text-6xl font-mono font-bold text-teal-700 w-28 h-28 flex items-center justify-center rounded-full bg-teal-50 border-4 border-teal-300">
+        --:--
+      </div>
+    </div>
+    <div id="alertBanner" class="hidden mt-4 bg-green-100 border border-green-400 text-green-800 rounded-xl px-4 py-3 text-center">
+      <p class="font-bold text-lg">🔔 Stand Up & Reset Your Posture!</p>
+      <p id="ergoTip" class="text-sm mt-1 italic"></p>
+      <button onclick="dismissAlert()"
+        class="mt-3 bg-green-600 hover:bg-green-700 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition">
+        ✓ Done — Reset Timer
+      </button>
+    </div>
+    <div id="overProofWarn" class="hidden mt-3 text-orange-600 font-medium text-sm">
+      ⚠ You haven't checked in — please stand up and stretch!
+    </div>
+  </section>
+
+  <!-- Log Posture Rating -->
+  <section class="bg-white rounded-2xl shadow-md p-6 mb-6" aria-label="Posture self-rating log">
+    <h2 class="text-lg font-semibold text-teal-700 mb-3">Log This Check-In</h2>
+    <div class="mb-3">
+      <p class="text-sm font-medium text-gray-700 mb-2">Posture Self-Rating (1 = terrible, 5 = perfect)</p>
+      <div class="flex gap-2" role="radiogroup" aria-label="Posture rating 1 to 5">
+        <button class="rating-btn flex-1 py-2 rounded-lg border-2 border-gray-200 hover:border-teal-400 font-bold text-gray-600 transition" data-val="1" aria-label="Rating 1">1</button>
+        <button class="rating-btn flex-1 py-2 rounded-lg border-2 border-gray-200 hover:border-teal-400 font-bold text-gray-600 transition" data-val="2" aria-label="Rating 2">2</button>
+        <button class="rating-btn flex-1 py-2 rounded-lg border-2 border-gray-200 hover:border-teal-400 font-bold text-gray-600 transition" data-val="3" aria-label="Rating 3">3</button>
+        <button class="rating-btn flex-1 py-2 rounded-lg border-2 border-gray-200 hover:border-teal-400 font-bold text-gray-600 transition" data-val="4" aria-label="Rating 4">4</button>
+        <button class="rating-btn flex-1 py-2 rounded-lg border-2 border-gray-200 hover:border-teal-400 font-bold text-gray-600 transition" data-val="5" aria-label="Rating 5">5</button>
+      </div>
+    </div>
+    <div class="mb-3">
+      <p class="text-sm font-medium text-gray-700 mb-2">Neck &amp; Shoulder Tension</p>
+      <div class="flex flex-wrap gap-2" role="radiogroup" aria-label="Tension level">
+        <button class="tension-btn px-3 py-1.5 rounded-full border-2 border-gray-200 text-sm font-medium hover:border-teal-400 transition" data-val="none" aria-label="No tension">😊 None</button>
+        <button class="tension-btn px-3 py-1.5 rounded-full border-2 border-gray-200 text-sm font-medium hover:border-yellow-400 transition" data-val="mild" aria-label="Mild tension">😐 Mild</button>
+        <button class="tension-btn px-3 py-1.5 rounded-full border-2 border-gray-200 text-sm font-medium hover:border-orange-400 transition" data-val="moderate" aria-label="Moderate tension">😬 Moderate</button>
+        <button class="tension-btn px-3 py-1.5 rounded-full border-2 border-gray-200 text-sm font-medium hover:border-red-400 transition" data-val="severe" aria-label="Severe tension">😣 Severe</button>
+      </div>
+    </div>
+    <button onclick="logEntry()"
+      class="bg-teal-600 hover:bg-teal-700 text-white font-semibold px-5 py-2 rounded-lg transition"
+      aria-label="Save posture log entry">
+      Save Entry
+    </button>
+    <p id="saveMsg" class="hidden text-green-600 text-sm mt-2 font-medium">✓ Entry saved!</p>
+  </section>
+
+  <!-- Tension Heatmap -->
+  <section class="bg-white rounded-2xl shadow-md p-6 mb-6" aria-label="Neck and shoulder tension heatmap">
+    <h2 class="text-lg font-semibold text-teal-700 mb-3">Tension Heatmap (Today)</h2>
+    <div id="heatmap" class="grid grid-cols-6 gap-2">
+      <p class="col-span-6 text-sm text-gray-400 italic">No entries yet today.</p>
+    </div>
+  </section>
+
+  <!-- Daily Posture Score Trend -->
+  <section class="bg-white rounded-2xl shadow-md p-6 mb-6" aria-label="Daily posture score trend">
+    <h2 class="text-lg font-semibold text-teal-700 mb-3">Daily Score Trend (Last 7 Days)</h2>
+    <div id="trend" class="space-y-2">
+      <p class="text-sm text-gray-400 italic">No data yet.</p>
+    </div>
+  </section>
+
+  <!-- Log History -->
+  <section class="bg-white rounded-2xl shadow-md p-6 mb-6" aria-label="Check-in history">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="text-lg font-semibold text-teal-700">Today's Check-Ins</h2>
+      <button onclick="clearToday()"
+        class="text-xs text-red-400 hover:text-red-600 underline transition"
+        aria-label="Clear today's check-in log">Clear Today</button>
+    </div>
+    <div id="logList" class="space-y-2 max-h-52 overflow-y-auto">
+      <p class="text-sm text-gray-400 italic">No check-ins logged yet.</p>
+    </div>
+  </section>
+</div>
+
+<script>
+  // ---- Utilities ----
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function todayKey() {
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  function loadLog() {
+    return JSON.parse(localStorage.getItem('posture_log_' + todayKey()) || '[]');
+  }
+
+  function saveLog(log) {
+    localStorage.setItem('posture_log_' + todayKey(), JSON.stringify(log));
+  }
+
+  // ---- Ergonomic Tips ----
+  const TIPS = [
+    "Roll your shoulders back and down, away from your ears.",
+    "Chin tuck: gently pull your chin straight back to align your head over your spine.",
+    "Adjust your monitor so the top third is at eye level.",
+    "Keep your feet flat on the floor; avoid crossing your legs.",
+    "Elbows should be at ~90° with wrists neutral — not bent up or down.",
+    "Relax your jaw and unclench your teeth.",
+    "Take 3 deep breaths, expanding your ribs sideways as you inhale.",
+    "Stand up for at least 2 minutes — march in place or do calf raises.",
+    "Blink slowly 10 times to reset eye focus and reduce dry eyes.",
+    "Gently tilt your ear toward your shoulder 3×, each side — neck side stretch.",
+    "Place a lumbar pillow or rolled towel at the small of your back.",
+    "Check that your hips are slightly higher than your knees when seated.",
+  ];
+  let tipIdx = 0;
+
+  function nextTip() {
+    const tip = TIPS[tipIdx % TIPS.length];
+    tipIdx++;
+    return tip;
+  }
+
+  // ---- Timer Logic ----
+  let timerInterval = null;
+  let running = false;
+  let remainingSeconds = 0;
+  let alertShown = false;
+  let overWarnTimeout = null;
+
+  const timerDisplay = document.getElementById('timerDisplay');
+  const toggleBtn = document.getElementById('toggleTimer');
+  const alertBanner = document.getElementById('alertBanner');
+  const ergoTip = document.getElementById('ergoTip');
+  const overWarn = document.getElementById('overProofWarn');
+  const pulseRing = document.getElementById('pulseRing');
+
+  function getIntervalSecs() {
+    return parseInt(document.getElementById('intervalMin').value, 10) * 60;
+  }
+
+  function formatTime(sec) {
+    const m = String(Math.floor(sec / 60)).padStart(2, '0');
+    const s = String(sec % 60).padStart(2, '0');
+    return m + ':' + s;
+  }
+
+  function startTimer() {
+    if (timerInterval) clearInterval(timerInterval);
+    if (remainingSeconds <= 0) remainingSeconds = getIntervalSecs();
+    alertBanner.classList.add('hidden');
+    overWarn.classList.add('hidden');
+    alertShown = false;
+    timerInterval = setInterval(tick, 1000);
+    toggleBtn.textContent = '⏹ Stop Timer';
+    running = true;
+  }
+
+  function stopTimer() {
+    clearInterval(timerInterval);
+    timerInterval = null;
+    toggleBtn.textContent = '▶ Start Timer';
+    running = false;
+    timerDisplay.textContent = '--:--';
+    remainingSeconds = 0;
+    pulseRing.classList.add('hidden');
+  }
+
+  function tick() {
+    remainingSeconds--;
+    timerDisplay.textContent = formatTime(remainingSeconds);
+
+    if (remainingSeconds <= 0 && !alertShown) {
+      // Fire alert
+      alertShown = true;
+      pulseRing.classList.remove('hidden');
+      alertBanner.classList.remove('hidden');
+      ergoTip.textContent = nextTip();
+      // play browser notification if permitted
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('Posture Check!', { body: ergoTip.textContent });
+      }
+      // over-warn after 5 mins of no dismiss
+      overWarnTimeout = setTimeout(() => {
+        overWarn.classList.remove('hidden');
+      }, 5 * 60 * 1000);
+      clearInterval(timerInterval);
+    }
+  }
+
+  function dismissAlert() {
+    clearTimeout(overWarnTimeout);
+    alertBanner.classList.add('hidden');
+    overWarn.classList.add('hidden');
+    pulseRing.classList.add('hidden');
+    remainingSeconds = getIntervalSecs();
+    alertShown = false;
+    if (running) startTimer();
+  }
+
+  toggleBtn.addEventListener('click', () => {
+    if (running) {
+      stopTimer();
+    } else {
+      remainingSeconds = getIntervalSecs();
+      running = true;
+      startTimer();
+      if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+      }
+    }
+  });
+
+  // ---- Rating & Tension Selection ----
+  let selectedRating = null;
+  let selectedTension = null;
+
+  document.querySelectorAll('.rating-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      selectedRating = parseInt(btn.dataset.val, 10);
+      document.querySelectorAll('.rating-btn').forEach(b => {
+        b.classList.remove('bg-teal-500', 'text-white', 'border-teal-500');
+        b.classList.add('border-gray-200');
+      });
+      btn.classList.add('bg-teal-500', 'text-white', 'border-teal-500');
+      btn.classList.remove('border-gray-200');
+    });
+  });
+
+  const tensionColors = { none: 'bg-green-400', mild: 'bg-yellow-400', moderate: 'bg-orange-400', severe: 'bg-red-500' };
+
+  document.querySelectorAll('.tension-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      selectedTension = btn.dataset.val;
+      document.querySelectorAll('.tension-btn').forEach(b => {
+        b.classList.remove('bg-green-400', 'bg-yellow-400', 'bg-orange-400', 'bg-red-500', 'text-white', 'border-green-400', 'border-yellow-400', 'border-orange-400', 'border-red-500');
+        b.classList.add('border-gray-200');
+      });
+      const col = tensionColors[selectedTension];
+      btn.classList.add(col, 'text-white', 'border-' + selectedTension === 'none' ? 'border-green-400' : '');
+    });
+  });
+
+  // ---- Log Entry ----
+  function logEntry() {
+    if (!selectedRating) { alert('Please select a posture rating (1–5).'); return; }
+    if (!selectedTension) { alert('Please select a tension level.'); return; }
+    const entry = {
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      rating: selectedRating,
+      tension: selectedTension
+    };
+    const log = loadLog();
+    log.push(entry);
+    saveLog(log);
+    document.getElementById('saveMsg').classList.remove('hidden');
+    setTimeout(() => document.getElementById('saveMsg').classList.add('hidden'), 2000);
+    selectedRating = null;
+    selectedTension = null;
+    document.querySelectorAll('.rating-btn').forEach(b => {
+      b.classList.remove('bg-teal-500', 'text-white', 'border-teal-500');
+      b.classList.add('border-gray-200');
+    });
+    document.querySelectorAll('.tension-btn').forEach(b => {
+      b.classList.remove('bg-green-400', 'bg-yellow-400', 'bg-orange-400', 'bg-red-500', 'text-white');
+      b.classList.add('border-gray-200');
+    });
+    renderAll();
+  }
+
+  function clearToday() {
+    if (!confirm('Clear all entries for today?')) return;
+    localStorage.removeItem('posture_log_' + todayKey());
+    renderAll();
+  }
+
+  // ---- Render Functions ----
+  function renderLog() {
+    const log = loadLog();
+    const container = document.getElementById('logList');
+    if (log.length === 0) {
+      container.innerHTML = '<p class="text-sm text-gray-400 italic">No check-ins logged yet.</p>';
+      return;
+    }
+    const ratingEmoji = ['', '😣', '😬', '😐', '🙂', '😁'];
+    container.innerHTML = log.slice().reverse().map(e => {
+      const tensionLabel = { none: '😊 None', mild: '😐 Mild', moderate: '😬 Moderate', severe: '😣 Severe' }[e.tension] || '';
+      const tensionBadgeColor = { none: 'bg-green-100 text-green-800', mild: 'bg-yellow-100 text-yellow-800', moderate: 'bg-orange-100 text-orange-800', severe: 'bg-red-100 text-red-800' }[e.tension] || '';
+      return `<div class="flex items-center justify-between bg-teal-50 rounded-lg px-3 py-2 text-sm">
+        <span class="text-gray-500 font-mono">${escapeHtml(e.time)}</span>
+        <span class="font-bold text-teal-700">${ratingEmoji[e.rating]} ${escapeHtml(String(e.rating))}/5</span>
+        <span class="px-2 py-0.5 rounded-full text-xs font-medium ${tensionBadgeColor}">${escapeHtml(tensionLabel)}</span>
+      </div>`;
+    }).join('');
+  }
+
+  function renderHeatmap() {
+    const log = loadLog();
+    const container = document.getElementById('heatmap');
+    if (log.length === 0) {
+      container.innerHTML = '<p class="col-span-6 text-sm text-gray-400 italic">No entries yet today.</p>';
+      return;
+    }
+    const tensionColors2 = { none: 'bg-green-400', mild: 'bg-yellow-300', moderate: 'bg-orange-400', severe: 'bg-red-500' };
+    container.innerHTML = log.map((e, i) => {
+      const col = tensionColors2[e.tension] || 'bg-gray-200';
+      return `<div class="${col} rounded-lg p-1.5 text-center text-white text-xs font-bold" title="${escapeHtml(e.time)} | Rating: ${e.rating} | Tension: ${e.tension}">
+        <div>${escapeHtml(e.time)}</div>
+        <div>${e.rating}/5</div>
+      </div>`;
+    }).join('');
+  }
+
+  function renderTrend() {
+    const container = document.getElementById('trend');
+    const entries = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const key = 'posture_log_' + d.toISOString().slice(0, 10);
+      const data = JSON.parse(localStorage.getItem(key) || '[]');
+      if (data.length === 0) continue;
+      const avg = (data.reduce((s, e) => s + e.rating, 0) / data.length).toFixed(1);
+      entries.push({ date: d.toISOString().slice(0, 10), avg, count: data.length });
+    }
+    if (entries.length === 0) {
+      container.innerHTML = '<p class="text-sm text-gray-400 italic">No data yet.</p>';
+      return;
+    }
+    container.innerHTML = entries.map(e => {
+      const pct = (parseFloat(e.avg) / 5) * 100;
+      const barColor = pct >= 70 ? 'bg-green-400' : pct >= 50 ? 'bg-yellow-400' : 'bg-red-400';
+      return `<div class="flex items-center gap-3 text-sm">
+        <span class="w-24 text-gray-500 font-mono text-xs">${escapeHtml(e.date)}</span>
+        <div class="flex-1 bg-gray-100 rounded-full h-4 overflow-hidden">
+          <div class="${barColor} h-4 rounded-full transition-all" style="width:${pct}%"></div>
+        </div>
+        <span class="w-16 text-right font-semibold text-teal-700">${escapeHtml(e.avg)}/5 <span class="text-xs text-gray-400">(${e.count})</span></span>
+      </div>`;
+    }).join('');
+  }
+
+  function renderAll() {
+    renderLog();
+    renderHeatmap();
+    renderTrend();
+  }
+
+  renderAll();
+</script>
+</body>
+</html>
